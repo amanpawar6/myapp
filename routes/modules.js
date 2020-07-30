@@ -10,7 +10,7 @@ var pathBooks = path.join(__dirname, '..','/data/books.json');
 
 // function test(data){
 //     fs.appendFile(pathUsers, data + '\n', (err) => console.log(err) )
-// }
+// } 
 
 readUsers();
 
