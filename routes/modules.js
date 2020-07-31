@@ -7,9 +7,11 @@ let books = [];
 var booksId = 0;
 var pathUsers = path.join(__dirname, '..','/data/users.json');
 var pathBooks = path.join(__dirname, '..','/data/books.json');
+// var testappendpath = path.join(__dirname, '..','/data/appendData');
 
-// function test(data){
-//     fs.appendFile(pathUsers, data + '\n', (err) => console.log(err) )
+// function testAppendData(data){
+//     console.log(testappendpath, data)
+//     fs.appendFile(testappendpath, data, (err) => console.log(err, testappendpath, data) )
 // } 
 
 readUsers();
@@ -72,7 +74,7 @@ function postData(req, res, next) {
     user.id = (++userId).toString();
     users.push(user);
     writeUsers(users);
-    // test(users);
+    // testAppendData(user);
     res.send(201, {
         message: `created`
     });
@@ -192,7 +194,7 @@ function userValidation(req, res, next){
 
 function bookValidation(req, res, next){
     let book = req.body;
-    const userExists = users.findIndex(item => item.title === book.title);
+    const userExists = books.findIndex(item => item.title === book.title);
     if(userExists > -1){
         return res.send(409, {message : `user exists ${book.title}`})
     }
