@@ -7,11 +7,14 @@
 var app = require('../app');
 var debug = require('debug')('myapp:server');
 var http = require('http');
+const mongoose = require('mongoose');
+
 
 /**
  * Get port from environment and store in Express.
  */
 
+mongoose.connect('mongodb://localhost:27017/test', {useNewUrlParser: true, useUnifiedTopology: true } );
 var port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 

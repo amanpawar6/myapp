@@ -3,10 +3,11 @@ const path = require('path');
 
 let users = [];
 var userId = 0;
-let books = [];
+let books = []; 
 var booksId = 0;
 var pathUsers = path.join(__dirname, '..','/data/users.json');
 var pathBooks = path.join(__dirname, '..','/data/books.json');
+
 // var testappendpath = path.join(__dirname, '..','/data/appendData');
 
 // function testAppendData(data){
