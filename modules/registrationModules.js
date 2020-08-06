@@ -1,36 +1,16 @@
 const usersModel = require('../model/userData');
+const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
-const checkExistingUser = (req, res, next) => {
-    usersModel.find({email : req.body.email}, (err,data) =>{
-        if(err){console.log(err)}
-        if (data.length > 0) {
-            return res.send(401, {
-                message: "User Already Exists"
-            })
-        }else{
-            next();
-        }
-    })
-}
-
 function postData(req, res, next) {
-    var user = req.body;
-    bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
+    var user1 = new usersModel(req.body);
+    user1.save((err) => {
         if (err) {
-            console.log(">>>>>", err)
+            return res.send(401, err)
         }
-        delete user.password;
-        user.password = hash;
-        var user1 = new usersModel(user);
-        user1.save((err) => {
-            if (err) {
-                return res.json(401, err)
-            }
-            res.json(200, "created");
-        })
-    });
+        res.send(200, "created");
+    })
 }
 
 async function comparePassword(userpassword, dbpassword) {
@@ -38,121 +18,109 @@ async function comparePassword(userpassword, dbpassword) {
     return compared;
 }
 
-async function getData(req, res, next) {
-    var userData = [];
-    await usersModel.findOne({
+async function userLogin(req, res, next) {
+    var findUser = await usersModel.findOne({
         email: req.body.email
-    }, (err, data) => {
+    }).catch(err => {
+        res.send(404, {
+            message: "Not Found"
+        })
+    });
+    if (findUser === null) {
+        return res.send(401, {
+            message: "Invalid E-mail"
+        })
+    }
+    var compared = await comparePassword(req.body.password, findUser.password).catch(err => {
         if (err) {
-            console.log(err)
+            return res.send(500)
         }
-        if (data === null) {
-            return res.send(401, {
-                message: "Data Not Found"
-            })
-        }
-        userData = data;
-    })
-    var compared = await comparePassword(req.body.password, userData.password);
+    });
     if (compared) {
-        req.session.userId = userData.id;
+        req.session.userId = findUser.id;
+        var exp = '60s';
+        var token = jwt.sign({
+            "id": findUser.id,
+            "email": findUser.email
+        }, 'shhhhh', { expiresIn : exp});
         res.send(200, {
-            message: "Login"
+            message: "Successfully Login",
+            Access_Token: token
         })
     } else {
         res.send(401, {
-            message: "Unauthorized"
+            message: "Invalid Password"
         })
     }
 }
 
-const valdidation = (req, res, next) => {
-    console.log(">>>>>", req.session.userId);
-    if(!req.session.userId){
-        res.send(401, {message: "session id issue"});
+function putData(req, res, next) {
+    var userid = req.params.id;
+        usersModel.findByIdAndUpdate(userid, req.body, (err) => {
+            if (err) {
+                res.send(404, {
+                    message: "Not Found"
+                })
+            }
+            res.send(200, {
+                message: "Updated"
+            });
+        });
+}
+
+function patchData(req, res, next) {
+    var user = req.body;
+    var userid = req.params.id;
+    if (user.password) {
+        bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
+            if (err) {
+                    return res.send(401, err)
+            }
+            delete user.password;
+            user.password = hash;
+            usersModel.findByIdAndUpdate(userid, {
+                $set: user
+            }, (err) => {
+                if (err) {
+                    return res.send(401, err)
+                }
+                res.send(200, {
+                    message: "Updated"
+                });
+            });
+        });
     } else {
-        next()
+        usersModel.findByIdAndUpdate(userid, {
+            $set: user
+        }, (err) => {
+            if (err) {
+                return res.send(401, err)
+            }
+            res.send(200, {
+                message: "Updated"
+            });
+        });
     }
 }
 
-async function putData(req, res, next){
-        var user = req.body;
-        var userid = req.params.id;
-        await bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
-            if (err) {
-                console.log(">>>>>", err)
-            }
-            delete user.password;
-            user.password = hash;
-        if(userid === req.session.userId){
-        console.log(">>>>>>>", req.session.userId, user, userid)
-        usersModel.findByIdAndUpdate(userid, user, (err, data) => {
-            if (err) {
-                console.log(err);
-            }
-            res.send(200, {message: "Updated"});
-        });
-    }else {
-        res.send(401, {message: "Unauthorized"});
-    }
-})}
-
-async function patchData(req, res, next){
-    var user = req.body;
+function deleteData(req, res, next) {
     var userid = req.params.id;
-    if(user.password){
-        await bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
-            if (err) {
-                console.log(">>>>>", err)
-            }
-            delete user.password;
-            user.password = hash;
-        if(userid === req.session.userId){
-        console.log(">>>>>>>", req.session.userId, user, userid)
-        usersModel.findByIdAndUpdate(userid, {$set : user}, (err, data) => {
-            if (err) {
-                console.log(err);
-            }
-            res.send(200, {message: "Updated"});
-        });
-    }else {
-        res.send(401, {message: "Unauthorized"});
-    }
-    })}else{
-        if(userid === req.session.userId){
-            console.log(">>>>>>>", req.session.userId, user, userid)
-            usersModel.findByIdAndUpdate(userid, {$set : user}, (err, data) => {
-                if (err) {
-                    console.log(err);
-                }
-                res.send(200, {message: "Updated"});
-            });
-        }else {
-            res.send(401, {message: "Unauthorized"});
-        }
-    }
-    }
-
-function deleteData(req, res, next){
-    var userid = req.params.id;
-    if(userid === req.session.userId){
         usersModel.findByIdAndDelete(userid, (err) => {
             if (err) {
-                console.log(err);
+                res.send(404, {
+                    message: "Not Found"
+                })
             }
-            res.send(200, {message: "Deleted"});
+            res.send(200, {
+                message: "Deleted"
+            });
         });
-    }else {
-        res.send(401, {message: "Unauthorized"});
-    }
 }
 
 module.exports = {
     postData,
-    getData,
+    userLogin,
     putData,
-    valdidation,
     patchData,
     deleteData,
-    checkExistingUser
 }
